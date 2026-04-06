@@ -1,0 +1,27 @@
+# 1. 모든 파일을 일단 무시
+/*
+
+# 2. 상위 폴더 구조를 먼저 허용 (이게 있어야 하위 폴더 접근 가능)
+!/Assets/
+!/ProjectSettings/
+!/Packages/
+
+# 3. Assets 폴더 안에서 내가 원하지 않는 것은 다시 무시 (예: Scripts 외 다른 것들)
+# 만약 Assets 안의 모든 걸 올릴 거라면 이 부분은 건너뛰어도 됩니다.
+/Assets/*
+!/Assets/Scripts/
+!/Assets/MLAgentsRuntime/
+!/Assets/**/*.meta
+
+# 4. 루트에 있는 파일들 허용
+!/requirements.txt
+!/config.yaml
+!/.gitignore
+
+# 5. 유니티 필수 설정 파일(.meta) 전체 허용
+!*.meta
+
+# 6. 가상환경 및 캐시 제외
+.venv-mlagents/
+**/.pyc
+**/__pycache__/
