@@ -15,6 +15,7 @@ public class ThorMLAgent : Agent
     [Header("Movement")]
     [SerializeField] private float moveStep = 0.03f;
     [SerializeField] private float rotateStep = 8f;
+    [SerializeField] private LayerMask interactMask;
 
     [Header("Look")]
     [SerializeField] private float lookStep = 10f;
@@ -53,6 +54,7 @@ public class ThorMLAgent : Agent
     [SerializeField] private int maxStepPerEpisode = 300;
 
     private CharacterController characterController;
+    private SimObjPhysics cachedFrontTarget;
 
     private object thorAgent;
     private Type thorAgentType;
@@ -214,12 +216,12 @@ public class ThorMLAgent : Agent
         }
 
         // 8: 정면에 뭔가 있는가
-        SimObjPhysics frontTarget = GetInteractableTarget();
-        sensor.AddObservation(frontTarget != null ? 1f : 0f);
+        cachedFrontTarget = GetInteractableTarget();
+        sensor.AddObservation(cachedFrontTarget != null ? 1f : 0f);
 
         // 9: 정면 물체가 타겟인가
         sensor.AddObservation(
-            (frontTarget != null && episodeTarget != null && frontTarget.ObjectID == episodeTarget.ObjectID) ? 1f : 0f
+            (cachedFrontTarget != null && episodeTarget != null && cachedFrontTarget.ObjectID == episodeTarget.ObjectID) ? 1f : 0f
         );
     }
 
@@ -268,16 +270,28 @@ public class ThorMLAgent : Agent
     {
         if (agentCamera == null) return null;
 
-        Ray ray = new Ray(agentCamera.transform.position, agentCamera.transform.forward);
         RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit, interactDistance, ~0, QueryTriggerInteraction.Ignore))
-        {
-            SimObjPhysics simObj = hit.collider.GetComponentInParent<SimObjPhysics>();
+        Vector3 origin = agentCamera.transform.position;
 
-            if (simObj != null && simObj.PrimaryProperty == SimObjPrimaryProperty.CanPickup)
+        Vector3[] dirs = new Vector3[]
+        {
+            agentCamera.transform.forward,
+            agentCamera.transform.forward + agentCamera.transform.up * 0.1f,
+            agentCamera.transform.forward - agentCamera.transform.up * 0.1f
+        };
+
+        foreach (var dir in dirs)
+        {
+            if (Physics.Raycast(origin, dir.normalized, out hit, interactDistance, interactMask))
             {
-                return simObj;
+                SimObjPhysics simObj = hit.collider.GetComponentInParent<SimObjPhysics>();
+
+                if (simObj != null && simObj.PrimaryProperty == SimObjPrimaryProperty.CanPickup)
+                {
+                    Debug.Log("[ThorMLAgent] 🎯 Hit success: " + simObj.ObjectID);
+                    return simObj;
+                }
             }
         }
 
@@ -430,7 +444,7 @@ public class ThorMLAgent : Agent
         if (GetHoldingObject() != null)
             return false;
 
-        SimObjPhysics frontTarget = GetInteractableTarget();
+        SimObjPhysics frontTarget = cachedFrontTarget;
         if (frontTarget == null) return false;
         if (frontTarget.ObjectID != episodeTarget.ObjectID) return false;
 
@@ -476,6 +490,7 @@ public class ThorMLAgent : Agent
     public override void OnActionReceived(float[] vectorAction)
     {
         currentStep++;
+        SimObjPhysics frontTarget = cachedFrontTarget;
 
         int move = Mathf.FloorToInt(vectorAction[0]);
         int turn = Mathf.FloorToInt(vectorAction[1]);
@@ -527,7 +542,7 @@ public class ThorMLAgent : Agent
         {
             Debug.Log("[ThorMLAgent] interact == 1 진입");
 
-            SimObjPhysics frontTarget = GetInteractableTarget();
+            SimObjPhysics frontTarget = cachedFrontTarget;
 
             if (frontTarget == null)
             {
