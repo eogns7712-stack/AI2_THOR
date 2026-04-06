@@ -1,0 +1,68 @@
+환경설정
+cd C:\Users\PC\Downloads\ai2thor-main\ai2thor-main\unity
+py -3.8 -m venv .venv-mlagents
+.\.venv-mlagents\Scripts\Activate.ps1
+python --version			>> 	Python 3.8.10
+python -m pip install --upgrade "pip<25" "setuptools<81" wheel
+python -m pip install "protobuf==3.20.3" "cattrs==1.5.0" "attrs==21.4.0" "grpcio==1.48.2"
+python -m pip install "mlagents==0.27.0" "mlagents-envs==0.27.0"
+python -m mlagents.trainers.learn --help
+python -m pip install "torch==1.13.1"
+python -m mlagents.trainers.learn config.yaml --run-id=thor_run_03 --force
+
+=========================================================
+환경설정 후 실행
+
+cd C:\Users\PC\Downloads\ai2thor-main\ai2thor-main\unity
+.\.venv-mlagents\Scripts\Activate.ps1
+python --version
+python -m mlagents.trainers.learn config.yaml --run-id=thor_run_03 --force
+
+
+=========================================================
+TensorBoard
+
+cd C:\Users\PC\Downloads\ai2thor-main\ai2thor-main\unity
+.\.venv-mlagents\Scripts\Activate.ps1
+pip install six tensorboard
+python -m tensorboard.main --logdir results/thor_run_04 --port 6006
+브라우저: http://localhost:6006
+
+
+AI2-THOR의 “내장 에이전트”를 그대로 ML-Agents Agent로 쓰는 게 아니라,
+THOR 환경 위에 ML-Agents용 Agent 래퍼를 만드는 작업
+환경을 다시 만드는 수준”까지 갈 필요는 없고,
+THOR의 기존 기능은 최대한 재사용하면서 ML-Agents 인터페이스만 얹는 방향
+ML-Agents가 요구하는 학습 인터페이스는 직접 만들어야 함
+
+AI2-THOR가 원래 갖고 있는 환경/상호작용은 최대한 살리고
+그 위에 ML-Agents가 학습할 수 있는 인터페이스만 얹는다
+THOR 환경을 ML-Agents가 이해할 수 있게 번역해주는 래퍼 역할
+
+ML-Agents는 쉽게 말하면 학습용 표준 인터페이스
+1. 관측값 전달	네가 어떤 정보를 줄지 정해주면 그걸 받아서 학습
+2. 액션 받기	“행동 번호”를 내보내는 것, 실제로 움직이는 건 네 코드
+3. 보상 전달	ML-Agents는 “무엇이 정답인지”를 직접 아는 게 아니라, 보상 신호를 통해 정책을 최적화
+4. 에피소드 관리	ML-Agents는 “한 판”이라는 개념을 관리하고, 그걸 여러 번 반복하면서 학습
+
+Unity/THOR 쪽 역할
+환경 실행
+오브젝트/물리/픽업 처리
+observation 만들기
+action 받으면 실제 행동 실행
+reward / done 전달
+즉 ThorMLAgent가 여기서 번역기 역할을 합니다.
+
+Python 쪽 역할
+학습 알고리즘 실행
+관측값 받아서 행동 결정
+보상 보고 정책 업데이트
+모델 저장
+학습 로그 기록
+
+Python이 실제로 하는 일
+1. Unity와 연결
+2. 행동 정책 학습
+3. 모델 저장
+4. 하이퍼파라미터 관리
+5. 로그/모니터링
